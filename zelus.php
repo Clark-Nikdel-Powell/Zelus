@@ -91,7 +91,7 @@ function zelus_check_dims($file) {
   $mw = get_option('zelus_mwidth');
   $mh = get_option('zelus_mheight');
   // check dimensions against settings
-  if ($file['width'] > $mw || $dim['height'] > $mh) return true;
+  if ($file['width'] > $mw || $file['height'] > $mh) return true;
   else return false;
 }
 
