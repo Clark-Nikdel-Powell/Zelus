@@ -27,7 +27,7 @@
 
 
 /*
-    DECLARE FILTER AND ACTION HOOKS
+	DECLARE FILTER AND ACTION HOOKS
 */
 add_filter('wp_handle_upload','zelus_enforce_limits');
 add_action('admin_init','zelus_reg_opts');
@@ -36,7 +36,7 @@ add_action('wp_ajax_zelus_batch','zelus_batch_callback');
 
 
 /*
-    REGISTERS SETTINGS AND FIELDS WITH WORDPRESS
+	REGISTERS SETTINGS AND FIELDS WITH WORDPRESS
 */
 function zelus_reg_opts() {
   add_settings_field('zelus_opts','Maximum size','zelus_show_opts','media');
@@ -47,7 +47,7 @@ function zelus_reg_opts() {
 
 
 /*
-    DECIDES IF UPLOAD NEEDS TO BE FILTERED
+	DECIDES IF UPLOAD NEEDS TO BE FILTERED
 */
 function zelus_decide_init($file) {
   // check file path
@@ -62,21 +62,21 @@ function zelus_decide_init($file) {
 
 
 /*
-    DETECT IF FILE EXISTS AND MODIFY PATH IF NEEDED
+	DETECT IF FILE EXISTS AND MODIFY PATH IF NEEDED
 */
 function zelus_get_path($file) {
   // if file doesn't exist, append uploads base dir path
   if (!is_file($file['file'])) {
-    // get upload dir info from WP
-    $updir = wp_upload_dir();
-    $basedir = $updir['basedir'];
-    // adds trailing folder slash if needed
-    if (substr($basedir,(strlen($basedir)-1))!='/')
-      $basedir .= '/';
-    // sets the new path with base dir + the file path
-    $newpath = $basedir.$file['file'];
-    // if the file exists, update the file info
-    if (is_file($newpath)) $file['file'] = $newpath;
+	// get upload dir info from WP
+	$updir = wp_upload_dir();
+	$basedir = $updir['basedir'];
+	// adds trailing folder slash if needed
+	if (substr($basedir,(strlen($basedir)-1))!='/')
+	  $basedir .= '/';
+	// sets the new path with base dir + the file path
+	$newpath = $basedir.$file['file'];
+	// if the file exists, update the file info
+	if (is_file($newpath)) $file['file'] = $newpath;
   }
   return $file;
 }
@@ -84,7 +84,7 @@ function zelus_get_path($file) {
 
 
 /*
-    CHECKS DIMENSIONS AGAINST SETTINGS
+	CHECKS DIMENSIONS AGAINST SETTINGS
 */
 function zelus_check_dims($file) {
   // get settings
@@ -98,33 +98,39 @@ function zelus_check_dims($file) {
 
 
 /*
-    GETS UPLOADED FILE AND RESIZES IF IMAGE
+	GETS UPLOADED FILE AND RESIZES IF IMAGE
 */
 function zelus_enforce_limits($file){
   // get max width and heigth from settings
   $mw = get_option('zelus_mwidth');
   $mh = get_option('zelus_mheight');
-  // load image into wordpress image resizer
-  $image = wp_get_image_editor($file['file']);
-  // only continue if no error
-  if (!is_wp_error($image)) {
-    // resize using WP's built-in editor
-    $image->resize($mw,$mh);
-    // save over original file
-    $image->save($file['file']);
-    // get new file size
-    $dim = getimagesize($file['file']);
-    // modify return info
-    $file['width'] = $dim[0];
-    $file['height'] = $dim[1];
+  // get mime type
+  $mime = mime_content_type($file['file']);
+  // make sure this is an image
+  if (strpos($mime,'image/')===0) {
+	// load image into wordpress image resizer
+	$image = wp_get_image_editor($file['file']);
   }
+  // only continue if no error
+  if (isset($image) && $image && !is_wp_error($image)) {
+	// resize using WP's built-in editor
+	$image->resize($mw,$mh);
+	// save over original file
+	$image->save($file['file']);
+	// get new file size
+	$dim = getimagesize($file['file']);
+	// modify return info
+	$file['width'] = $dim[0];
+	$file['height'] = $dim[1];
+  }
+  // return file for handling
   return $file;
 }
 
 
 
 /*
-    AJAX RESPONSE PROCESSING
+	AJAX RESPONSE PROCESSING
 */
 function zelus_batch_callback() {
   // set time limit for long batches
@@ -135,30 +141,30 @@ function zelus_batch_callback() {
   $posts = get_posts($args);
   // if there are any images to process
   if ($posts) {
-    // begin counter
-    $i=0;
-    // for each image found
-    foreach ($posts as $post) {
-      // if this is indeed an image post
-      if (wp_attachment_is_image($post->ID)) {
-        // get meta data for image
-        $image = wp_get_attachment_metadata($post->ID,true);
-        // run enforcement policy on image
-        $process = zelus_decide_init($image);
-        // if process was successful
-        if ($process) {
-          // modify meta data with new dimensions
-          $image['width'] = $process['width'];
-          $image['height'] = $process['height'];
-          // submit changes
-          wp_update_attachment_metadata($post->ID,$image);
-          // incriment success
-          $i++;
-        }
-      }
-    }
-    // announce completions
-    echo $i.' image(s) processed.';
+	// begin counter
+	$i=0;
+	// for each image found
+	foreach ($posts as $post) {
+	  // if this is indeed an image post
+	  if (wp_attachment_is_image($post->ID)) {
+		// get meta data for image
+		$image = wp_get_attachment_metadata($post->ID,true);
+		// run enforcement policy on image
+		$process = zelus_decide_init($image);
+		// if process was successful
+		if ($process) {
+		  // modify meta data with new dimensions
+		  $image['width'] = $process['width'];
+		  $image['height'] = $process['height'];
+		  // submit changes
+		  wp_update_attachment_metadata($post->ID,$image);
+		  // incriment success
+		  $i++;
+		}
+	  }
+	}
+	// announce completions
+	echo $i.' image(s) processed.';
   }
   else echo 'No images to process.';
   // die (required for WP ajax)
@@ -168,25 +174,25 @@ function zelus_batch_callback() {
 
 
 /*
-    AJAX FOR BUTTON CLICK
+	AJAX FOR BUTTON CLICK
 */
 function zelus_ajax() {
 ?>
 <script type="text/javascript" >
 jQuery(document).ready(function($) {
   $('#batchConvert').on('click',function(){
-    var confirmation = confirm("Are you sure you want to resize all existing images? This could take several moments.\n\n(Images with dimensions less than the maximum will be skipped)")
-    if (confirmation==true) {
-      var data = { action: 'zelus_batch', confirm: true };
-      $('#batchConvert').prop('disabled',true)
-      $('#batchLoad').css('display','inline');
-      $.ajaxSetup({ timeout: 300000 });
-      $.post(ajaxurl, data, function(response) { 
-        $('#batchResponse').html(response);
-        $('#batchLoad').css('display','none');
-        $('#batchConvert').prop('disabled',false)
-      });
-    }
+	var confirmation = confirm("Are you sure you want to resize all existing images? This could take several moments.\n\n(Images with dimensions less than the maximum will be skipped)")
+	if (confirmation==true) {
+	  var data = { action: 'zelus_batch', confirm: true };
+	  $('#batchConvert').prop('disabled',true)
+	  $('#batchLoad').css('display','inline');
+	  $.ajaxSetup({ timeout: 300000 });
+	  $.post(ajaxurl, data, function(response) { 
+		$('#batchResponse').html(response);
+		$('#batchLoad').css('display','none');
+		$('#batchConvert').prop('disabled',false)
+	  });
+	}
   });
 });
 </script>
@@ -196,7 +202,7 @@ jQuery(document).ready(function($) {
 
 
 /*
-    SHOWS OPTIONS ON SETTINGS PAGE
+	SHOWS OPTIONS ON SETTINGS PAGE
 */
 function zelus_show_opts() {
 ?>
